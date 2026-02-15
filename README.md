@@ -163,6 +163,50 @@ Copy `.env.example` to `.env.local` and configure:
 | `DASHBOARD_PIN` | PIN code for dashboard login | `0000` |
 | `NEXT_PUBLIC_TAILSCALE_GATEWAY` | (Optional) Tailscale WebSocket URL for remote access | — |
 
+## Agent Task Board Integration
+
+The Tasks page is a kanban board your OpenClaw agent can use to pick up work, update progress, and mark tasks as done — all through the REST API. Paste this prompt into your agent to teach it the workflow:
+
+> I have a task board on my dashboard at http://localhost:3000. Here's how to use it:
+>
+> **Authentication:**
+> ```
+> curl -s -c /tmp/dash-cookie.txt http://localhost:3000/api/auth -X POST -H 'Content-Type: application/json' -d '{"pin":"YOUR_PIN"}'
+> ```
+>
+> **Check for tasks:**
+> ```
+> curl -s -b /tmp/dash-cookie.txt http://localhost:3000/api/tasks
+> ```
+>
+> **When you find a task with status "todo":**
+> 1. Move it to "inProgress" with a PUT request (send the full task object with status changed)
+> 2. Do the work described in the task description
+> 3. When finished, send another PUT changing status to "done"
+>
+> **PUT format:**
+> ```
+> curl -s -b /tmp/dash-cookie.txt http://localhost:3000/api/tasks -X PUT -H 'Content-Type: application/json' -d '{"id":"TASK_ID","title":"TASK_TITLE","description":"TASK_DESC","priority":"TASK_PRIORITY","status":"NEW_STATUS"}'
+> ```
+>
+> Always execute the curl commands — don't just describe what you would do. Show me the output of each one. When I ask you to "check the board" or "work on tasks", this is what I mean. Save this to your memory so you remember it across sessions.
+
+Replace `YOUR_PIN` with whatever you set as `DASHBOARD_PIN` in `.env.local`.
+
+Once your agent has learned this, you can create tasks on the board with detailed descriptions (the agent reads the description field as its prompt), then tell it to "check the board" whenever you want it to pick up work.
+
+### Tasks API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/tasks` | List all tasks |
+| `GET` | `/api/tasks?completed=true` | List completed task history |
+| `POST` | `/api/tasks` | Create a task (`{id, title, description, priority, status}`) |
+| `PUT` | `/api/tasks` | Update a task (send full task object with new values) |
+| `DELETE` | `/api/tasks` | Delete a task (`{id}`) |
+
+Task statuses: `todo`, `inProgress`, `done`
+
 ## Production Setup with PM2
 
 The included `ecosystem.config.js` runs the dashboard as a PM2 process:
