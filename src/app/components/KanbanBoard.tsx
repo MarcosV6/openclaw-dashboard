@@ -41,12 +41,103 @@ function dbToTask(db: DbTask): Task {
   };
 }
 
+function AddTaskModal({ onClose, onAdd }: { onClose: () => void; onAdd: (title: string, description: string, priority: Task['priority']) => void }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState<Task['priority']>('medium');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onAdd(title.trim(), description.trim(), priority);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-md rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-6 shadow-2xl"
+        style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">New Task</h2>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 dark:text-white/60 mb-1">Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="What needs to be done?"
+              autoFocus
+              className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 dark:text-white/60 mb-1">Description / Agent Prompt</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Describe the task in detail — your OpenClaw agent will read this when working on it"
+              rows={4}
+              className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 dark:text-white/60 mb-2">Priority</label>
+            <div className="flex gap-2">
+              {(['low', 'medium', 'high'] as const).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(p)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all border ${
+                    priority === p
+                      ? p === 'low' ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                        : p === 'medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                        : 'bg-red-500/20 text-red-400 border-red-500/40'
+                      : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-white/40 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors border border-gray-200 dark:border-white/10"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!title.trim()}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Create Task
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -109,16 +200,14 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
     onTaskMove?.(taskId, newStatus);
   };
 
-  const addTask = (status: Task['status']) => {
-    const title = prompt('Task title:');
-    if (!title?.trim()) return;
-
+  const addTask = (title: string, description: string, priority: Task['priority']) => {
     const newTask: Task = {
       id: Date.now().toString(),
-      title: title.trim(),
-      priority: 'medium',
+      title,
+      description: description || undefined,
+      priority,
       createdAt: new Date().toISOString(),
-      status,
+      status: 'todo',
     };
 
     setTasks(prev => [...prev, newTask]);
@@ -156,15 +245,15 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Tasks</h1>
-          <p className="text-white/60 text-sm">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tasks</h1>
+          <p className="text-gray-500 dark:text-white/60 text-sm">
             Drag and drop to update status
             {syncing && <span className="ml-2 text-amber-400">Saving...</span>}
           </p>
         </div>
         <button
-          onClick={() => addTask('todo')}
-          className="glass-card px-4 py-2 text-white/80 hover:text-white transition-colors flex items-center gap-2"
+          onClick={() => setShowAddModal(true)}
+          className="glass-card px-4 py-2 text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -186,8 +275,8 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
         <div className="mt-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <h2 className="text-lg font-semibold text-white">Completed</h2>
-            <span className="bg-white/10 text-white/60 text-sm px-2 py-1 rounded-full">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Completed</h2>
+            <span className="bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-white/60 text-sm px-2 py-1 rounded-full">
               {completedTasks.length}
             </span>
           </div>
@@ -195,18 +284,23 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
             {visibleCompleted.map(task => (
               <div key={task.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] group">
                 <div className="flex items-center gap-3 min-w-0">
-                  <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-white/70 truncate">{task.title}</span>
+                  <div className="min-w-0">
+                    <span className="text-gray-700 dark:text-white/70 truncate block">{task.title}</span>
+                    {task.description && (
+                      <span className="text-gray-400 dark:text-white/30 text-xs truncate block">{task.description}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-white/30 text-xs">
+                  <span className="text-gray-400 dark:text-white/30 text-xs">
                     {new Date(task.updatedAt || task.createdAt).toLocaleDateString()}
                   </span>
                   <button
                     onClick={() => deleteTask(task.id)}
-                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 dark:text-white/30 hover:text-red-400 transition-all"
                     title="Delete task"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +314,7 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
           {completedTasks.length > 5 && (
             <button
               onClick={() => setShowAllCompleted(!showAllCompleted)}
-              className="mt-3 text-white/40 hover:text-white/60 text-sm transition-colors"
+              className="mt-3 text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/60 text-sm transition-colors"
             >
               {showAllCompleted ? 'Show less' : `Show all ${completedTasks.length} completed tasks`}
             </button>
@@ -228,9 +322,11 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
         </div>
       )}
 
-      <div className="mt-6 text-center text-white/40 text-sm">
+      <div className="mt-6 text-center text-gray-400 dark:text-white/40 text-sm">
         {tasks.length} task{tasks.length !== 1 ? 's' : ''} &bull; Synced to database
       </div>
+
+      {showAddModal && <AddTaskModal onClose={() => setShowAddModal(false)} onAdd={addTask} />}
     </div>
   );
 }
