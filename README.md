@@ -71,15 +71,53 @@ curl -s http://127.0.0.1:18789/health
 
 If this doesn't respond, make sure the gateway is running (`openclaw gateway start` or check your OpenClaw setup).
 
-### 3. Verify your database exists
+### 3. Set up the database
 
-Usage analytics require a populated SQLite database:
+The dashboard reads from a SQLite database for usage analytics, tasks, and health checks. OpenClaw doesn't create this database automatically — you need to initialize it:
 
 ```bash
-ls -la ~/.openclaw/workspace/data/usage.db
+mkdir -p ~/.openclaw/workspace/data
+
+sqlite3 ~/.openclaw/workspace/data/usage.db <<'SQL'
+CREATE TABLE IF NOT EXISTS usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL,
+    session_id TEXT,
+    model_used TEXT NOT NULL,
+    tokens_in INTEGER NOT NULL DEFAULT 0,
+    tokens_out INTEGER NOT NULL DEFAULT 0,
+    cost_estimate REAL NOT NULL DEFAULT 0.0,
+    task_type TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_timestamp ON usage(timestamp);
+CREATE INDEX IF NOT EXISTS idx_model ON usage(model_used);
+CREATE INDEX IF NOT EXISTS idx_session ON usage(session_id);
+
+CREATE TABLE IF NOT EXISTS health_checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    check_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status TEXT NOT NULL,
+    message TEXT,
+    record_count INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    status TEXT NOT NULL DEFAULT 'todo',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+SQL
 ```
 
-If the file doesn't exist, the usage tracker hasn't recorded any data yet. The dashboard will still work — the usage page will just show empty charts.
+If the database already exists (e.g. from an OpenClaw usage tracker or cron job), you're all set — just make sure `DATABASE_PATH` points to it.
 
 ### 4. Check your paths
 
