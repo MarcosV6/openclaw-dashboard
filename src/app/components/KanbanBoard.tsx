@@ -131,6 +131,53 @@ function AddTaskModal({ onClose, onAdd }: { onClose: () => void; onAdd: (title: 
   );
 }
 
+function DeleteTaskModal({ task, onClose, onConfirm }: { task: Task; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-sm rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-6 shadow-2xl"
+        style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Delete Task</h2>
+            <p className="text-gray-500 dark:text-white/50 text-sm">This action cannot be undone</p>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 mb-5">
+          <p className="text-gray-900 dark:text-white font-medium text-sm">{task.title}</p>
+          {task.description && (
+            <p className="text-gray-500 dark:text-white/40 text-xs mt-1 line-clamp-2">{task.description}</p>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-white/40 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors border border-gray-200 dark:border-white/10"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-500 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -138,6 +185,7 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -214,12 +262,16 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
     syncTask(newTask, 'POST');
   };
 
-  const deleteTask = (taskId: string) => {
-    if (confirm('Delete this task?')) {
-      const task = tasks.find(t => t.id === taskId);
-      setTasks(prev => prev.filter(t => t.id !== taskId));
-      if (task) syncTask(task, 'DELETE');
-    }
+  const requestDelete = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) setDeleteTarget(task);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    setTasks(prev => prev.filter(t => t.id !== deleteTarget.id));
+    syncTask(deleteTarget, 'DELETE');
+    setDeleteTarget(null);
   };
 
   const getTasksByStatus = (status: Task['status']) =>
@@ -264,9 +316,9 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
 
       <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col lg:flex-row gap-4 pb-4">
-          <KanbanColumn id="todo" title="To Do" tasks={getTasksByStatus('todo')} color="purple" isDragging={isDragging} onDelete={deleteTask} />
-          <KanbanColumn id="inProgress" title="In Progress" tasks={getTasksByStatus('inProgress')} color="amber" isDragging={isDragging} onDelete={deleteTask} />
-          <KanbanColumn id="done" title="Done" tasks={getTasksByStatus('done')} color="green" isDragging={isDragging} onDelete={deleteTask} />
+          <KanbanColumn id="todo" title="To Do" tasks={getTasksByStatus('todo')} color="purple" isDragging={isDragging} onDelete={requestDelete} />
+          <KanbanColumn id="inProgress" title="In Progress" tasks={getTasksByStatus('inProgress')} color="amber" isDragging={isDragging} onDelete={requestDelete} />
+          <KanbanColumn id="done" title="Done" tasks={getTasksByStatus('done')} color="green" isDragging={isDragging} onDelete={requestDelete} />
         </div>
       </DragDropContext>
 
@@ -299,7 +351,7 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
                     {new Date(task.updatedAt || task.createdAt).toLocaleDateString()}
                   </span>
                   <button
-                    onClick={() => deleteTask(task.id)}
+                    onClick={() => requestDelete(task.id)}
                     className="opacity-0 group-hover:opacity-100 text-gray-400 dark:text-white/30 hover:text-red-400 transition-all"
                     title="Delete task"
                   >
@@ -327,6 +379,7 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
       </div>
 
       {showAddModal && <AddTaskModal onClose={() => setShowAddModal(false)} onAdd={addTask} />}
+      {deleteTarget && <DeleteTaskModal task={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={confirmDelete} />}
     </div>
   );
 }
