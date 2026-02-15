@@ -207,6 +207,41 @@ Once your agent has learned this, you can create tasks on the board with detaile
 
 Task statuses: `todo`, `inProgress`, `done`
 
+### Automatic Task Worker (Cron Job)
+
+To have your agent automatically check the board and work on tasks without you having to ask, add a cron job to `~/.openclaw/cron/jobs.json`. Add this entry to the `jobs` array:
+
+```json
+{
+  "id": "task-board-worker",
+  "agentId": "main",
+  "name": "Task Board Worker",
+  "enabled": true,
+  "createdAtMs": 1771135200000,
+  "updatedAtMs": 1771135200000,
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 */2 * * *",
+    "tz": "America/New_York"
+  },
+  "sessionTarget": "isolated",
+  "wakeMode": "now",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Check the dashboard task board for work. First authenticate: curl -s -c /tmp/dash-cookie.txt http://localhost:3000/api/auth -X POST -H 'Content-Type: application/json' -d '{\"pin\":\"YOUR_PIN\"}'. Then fetch tasks: curl -s -b /tmp/dash-cookie.txt http://localhost:3000/api/tasks. Look for tasks with status \"todo\". If there are none, just reply \"No tasks on the board\" and stop. If there is a todo task, pick the highest priority one and: 1) Move it to inProgress with a PUT request. 2) Do the work described in the task description. 3) Move it to done with another PUT. Only work on ONE task per run. Always actually execute the curl commands and show output.",
+    "timeoutSeconds": 600
+  },
+  "delivery": {
+    "mode": "none"
+  },
+  "state": {}
+}
+```
+
+Replace `YOUR_PIN` with your `DASHBOARD_PIN` and adjust the timezone (`tz`) to your own. The `"expr": "0 */2 * * *"` schedule runs every 2 hours. Change it to `"0 * * * *"` for every hour, or `"*/30 * * * *"` for every 30 minutes.
+
+After editing `jobs.json`, restart your OpenClaw gateway for the new job to take effect.
+
 ## Production Setup with PM2
 
 The included `ecosystem.config.js` runs the dashboard as a PM2 process:
