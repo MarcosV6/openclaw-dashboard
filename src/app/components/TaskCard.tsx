@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Draggable } from '@hello-pangea/dnd';
 
 interface Task {
   id: string;
@@ -29,24 +30,31 @@ const priorityBadges = {
 
 export default function TaskCard({ task, index }: TaskCardProps) {
   return (
-    <div
-      className={`glass-card p-4 mb-3 cursor-grab active:cursor-grabbing border-l-4 ${priorityColors[task.priority]} hover:bg-white/15 transition-colors`}
-      draggable
-      data-task-id={task.id}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <h4 className="text-white font-medium">{task.title}</h4>
-        <span className={`text-xs px-2 py-1 rounded ${priorityBadges[task.priority]}`}>
-          {task.priority}
-        </span>
-      </div>
-      {task.description && (
-        <p className="text-white/60 text-sm mb-2">{task.description}</p>
+    <Draggable draggableId={task.id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          className={`glass-card p-4 mb-3 cursor-grab active:cursor-grabbing border-l-4 ${priorityColors[task.priority]} hover:bg-white/15 transition-colors ${
+            snapshot.isDragging ? 'shadow-lg shadow-purple-500/20 bg-white/15' : ''
+          }`}
+        >
+          <div className="flex justify-between items-start mb-2">
+            <h4 className="text-white font-medium">{task.title}</h4>
+            <span className={`text-xs px-2 py-1 rounded ${priorityBadges[task.priority]}`}>
+              {task.priority}
+            </span>
+          </div>
+          {task.description && (
+            <p className="text-white/60 text-sm mb-2">{task.description}</p>
+          )}
+          <div className="flex justify-between items-center text-xs text-white/40">
+            <span>{new Date(task.createdAt).toLocaleDateString()}</span>
+            <span className="opacity-50">&#8942;&#8942;</span>
+          </div>
+        </div>
       )}
-      <div className="flex justify-between items-center text-xs text-white/40">
-        <span>{new Date(task.createdAt).toLocaleDateString()}</span>
-        <span className="opacity-50">⋮⋮</span>
-      </div>
-    </div>
+    </Draggable>
   );
 }
