@@ -18,6 +18,7 @@ interface KanbanColumnProps {
   tasks: Task[];
   color: string;
   isDragging?: boolean;
+  onDelete?: (taskId: string) => void;
 }
 
 const columnColors = {
@@ -32,7 +33,7 @@ const headerColors = {
   done: 'text-green-400',
 };
 
-export default function KanbanColumn({ id, title, tasks, color, isDragging }: KanbanColumnProps) {
+export default function KanbanColumn({ id, title, tasks, color, isDragging, onDelete }: KanbanColumnProps) {
   return (
     <div
       className={`p-4 flex-1 lg:min-w-0 border-t-2 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] ${columnColors[id as keyof typeof columnColors] || 'border-t-gray-500'}`}
@@ -40,8 +41,8 @@ export default function KanbanColumn({ id, title, tasks, color, isDragging }: Ka
     >
       <div className="flex items-center gap-2 mb-4">
         <div className={`w-3 h-3 rounded-full ${
-          id === 'todo' ? 'bg-purple-500' : 
-          id === 'inProgress' ? 'bg-amber-500' : 
+          id === 'todo' ? 'bg-purple-500' :
+          id === 'inProgress' ? 'bg-amber-500' :
           'bg-green-500'
         }`}></div>
         <h3 className={`font-semibold ${headerColors[id as keyof typeof headerColors] || 'text-white'}`}>
@@ -62,10 +63,10 @@ export default function KanbanColumn({ id, title, tasks, color, isDragging }: Ka
             }`}
           >
             {tasks.map((task, index) => (
-              <TaskCard key={task.id} task={task} index={index} />
+              <TaskCard key={task.id} task={task} index={index} onDelete={onDelete} />
             ))}
             {provided.placeholder}
-            
+
             {tasks.length === 0 && !snapshot.isDraggingOver && (
               <div className="text-center py-8 text-white/40 text-sm">
                 No tasks

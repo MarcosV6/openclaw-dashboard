@@ -10,6 +10,7 @@ interface Task {
   description?: string;
   priority: 'low' | 'medium' | 'high';
   createdAt: string;
+  updatedAt?: string;
   status: 'todo' | 'inProgress' | 'done';
 }
 
@@ -35,6 +36,7 @@ function dbToTask(db: DbTask): Task {
     description: db.description || undefined,
     priority: (db.priority as Task['priority']) || 'medium',
     createdAt: db.created_at,
+    updatedAt: db.updated_at,
     status: (db.status as Task['status']) || 'todo',
   };
 }
@@ -44,6 +46,7 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const [loaded, setLoaded] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -133,6 +136,14 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const getTasksByStatus = (status: Task['status']) =>
     tasks.filter(task => task.status === status);
 
+  const completedTasks = getTasksByStatus('done').sort((a, b) => {
+    const dateA = a.updatedAt || a.createdAt;
+    const dateB = b.updatedAt || b.createdAt;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
+
+  const visibleCompleted = showAllCompleted ? completedTasks : completedTasks.slice(0, 5);
+
   if (!loaded) {
     return (
       <div className="flex justify-center py-12">
@@ -164,11 +175,58 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
 
       <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col lg:flex-row gap-4 pb-4">
-          <KanbanColumn id="todo" title="To Do" tasks={getTasksByStatus('todo')} color="purple" isDragging={isDragging} />
-          <KanbanColumn id="inProgress" title="In Progress" tasks={getTasksByStatus('inProgress')} color="amber" isDragging={isDragging} />
-          <KanbanColumn id="done" title="Done" tasks={getTasksByStatus('done')} color="green" isDragging={isDragging} />
+          <KanbanColumn id="todo" title="To Do" tasks={getTasksByStatus('todo')} color="purple" isDragging={isDragging} onDelete={deleteTask} />
+          <KanbanColumn id="inProgress" title="In Progress" tasks={getTasksByStatus('inProgress')} color="amber" isDragging={isDragging} onDelete={deleteTask} />
+          <KanbanColumn id="done" title="Done" tasks={getTasksByStatus('done')} color="green" isDragging={isDragging} onDelete={deleteTask} />
         </div>
       </DragDropContext>
+
+      {/* Completed Section */}
+      {completedTasks.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <h2 className="text-lg font-semibold text-white">Completed</h2>
+            <span className="bg-white/10 text-white/60 text-sm px-2 py-1 rounded-full">
+              {completedTasks.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {visibleCompleted.map(task => (
+              <div key={task.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] group">
+                <div className="flex items-center gap-3 min-w-0">
+                  <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-white/70 truncate">{task.title}</span>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="text-white/30 text-xs">
+                    {new Date(task.updatedAt || task.createdAt).toLocaleDateString()}
+                  </span>
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all"
+                    title="Delete task"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {completedTasks.length > 5 && (
+            <button
+              onClick={() => setShowAllCompleted(!showAllCompleted)}
+              className="mt-3 text-white/40 hover:text-white/60 text-sm transition-colors"
+            >
+              {showAllCompleted ? 'Show less' : `Show all ${completedTasks.length} completed tasks`}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mt-6 text-center text-white/40 text-sm">
         {tasks.length} task{tasks.length !== 1 ? 's' : ''} &bull; Synced to database
