@@ -36,9 +36,15 @@ export default function TaskCard({ task, index }: TaskCardProps) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`glass-card p-4 mb-3 cursor-grab active:cursor-grabbing border-l-4 ${priorityColors[task.priority]} hover:bg-white/15 transition-colors ${
-            snapshot.isDragging ? 'shadow-lg shadow-purple-500/20 bg-white/15' : ''
+          className={`p-4 mb-3 cursor-grab active:cursor-grabbing border-l-4 rounded-2xl border border-[var(--card-border)] ${priorityColors[task.priority]} hover:bg-white/15 transition-colors ${
+            snapshot.isDragging
+              ? 'shadow-lg shadow-purple-500/20 bg-[var(--card-bg)] z-[9999] !backdrop-filter-none'
+              : 'glass-card'
           }`}
+          style={{
+            ...provided.draggableProps.style,
+            ...(snapshot.isDragging ? { backdropFilter: 'none', WebkitBackdropFilter: 'none' } : {}),
+          }}
         >
           <div className="flex justify-between items-start mb-2">
             <h4 className="text-white font-medium">{task.title}</h4>
