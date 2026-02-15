@@ -9,6 +9,7 @@ A self-hosted web dashboard for [OpenClaw](https://github.com/openclaw) — moni
 - **Home Dashboard** — gateway status, heartbeat, cron jobs, database health at a glance
 - **Chat Interface** — talk to your OpenClaw agent via the gateway WebSocket protocol
 - **Kanban Tasks** — drag-and-drop task board your agent can work from automatically
+- **Research Archive** — all agent task output and research saved and browsable
 - **Usage Analytics** — token spend, cost breakdowns, model comparisons over time
 - **Session Viewer** — browse raw JSONL session logs from your agent
 - **Memory Browser** — read and search your agent's markdown memory files
@@ -91,7 +92,7 @@ Want your agent to check the board and work on tasks automatically without you h
 
 Paste this into your OpenClaw agent:
 
-> Add a new cron job to ~/.openclaw/cron/jobs.json called "Task Board Worker". It should run every 2 hours in my timezone. The job should check my dashboard task board at http://localhost:3000/api/tasks for any tasks with status "todo". If there are none, stop. If there is one, pick the highest priority task, move it to "inProgress" with a PUT request, do the work described in the task description, then move it to "done" with another PUT. It needs to authenticate first with my dashboard PIN. Use the same PIN from my .env.local file. Only work on one task per run. Set the timeout to 600 seconds. After editing jobs.json, restart the gateway so the new job takes effect.
+> Add a new cron job to ~/.openclaw/cron/jobs.json called "Task Board Worker". It should run every 2 hours in my timezone. The job should check my dashboard task board at http://localhost:3000/api/tasks for any tasks with status "todo". If there are none, stop. If there is one, pick the highest priority task, move it to "inProgress" with a PUT request, do the work described in the task description, then save ALL output and results to a markdown file at ~/.openclaw/workspace/research/YYYY-MM-DD-task-title-slug.md so I can view it on the Research page. Then move the task to "done" with another PUT. It needs to authenticate first with my dashboard PIN. Use the same PIN from my .env.local file. Only work on one task per run. Set the timeout to 600 seconds. After editing jobs.json, restart the gateway so the new job takes effect.
 
 **Option B: Manual setup**
 
@@ -114,7 +115,7 @@ Add this entry to the `jobs` array in `~/.openclaw/cron/jobs.json`:
   "wakeMode": "now",
   "payload": {
     "kind": "agentTurn",
-    "message": "Check the dashboard task board for work. First authenticate: curl -s -c /tmp/dash-cookie.txt http://localhost:3000/api/auth -X POST -H 'Content-Type: application/json' -d '{\"pin\":\"YOUR_PIN\"}'. Then fetch tasks: curl -s -b /tmp/dash-cookie.txt http://localhost:3000/api/tasks. Look for tasks with status \"todo\". If there are none, just reply \"No tasks on the board\" and stop. If there is a todo task, pick the highest priority one and: 1) Move it to inProgress with a PUT request. 2) Do the work described in the task description. 3) Move it to done with another PUT. Only work on ONE task per run. Always actually execute the curl commands and show output.",
+    "message": "Check the dashboard task board for work. First authenticate: curl -s -c /tmp/dash-cookie.txt http://localhost:3000/api/auth -X POST -H 'Content-Type: application/json' -d '{\"pin\":\"YOUR_PIN\"}'. Then fetch tasks: curl -s -b /tmp/dash-cookie.txt http://localhost:3000/api/tasks. Look for tasks with status \"todo\". If there are none, just reply \"No tasks on the board\" and stop. If there is a todo task, pick the highest priority one and: 1) Move it to inProgress with a PUT request. 2) Do the work described in the task description. 3) IMPORTANT: Save ALL output, research results, and findings to a markdown file at ~/.openclaw/workspace/research/YYYY-MM-DD-task-title-slug.md (use today's date and a slugified version of the task title). The file should start with a # heading of the task title, then include all results, data, analysis, code, or whatever the task produced. 4) Move the task to done with another PUT. Only work on ONE task per run. Always actually execute the curl commands and show output. Do NOT just describe what you would do — actually execute each command and save the results.",
     "timeoutSeconds": 600
   },
   "delivery": {
