@@ -25,7 +25,7 @@ A self-hosted web dashboard for [OpenClaw](https://github.com/openclaw) — moni
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/openclaw-dashboard.git
+git clone https://github.com/MarcosV6/openclaw-dashboard.git
 cd openclaw-dashboard
 
 # Configure environment
@@ -40,18 +40,71 @@ npm start
 
 The dashboard will be available at `http://localhost:3000`.
 
+## Connecting to OpenClaw
+
+The dashboard reads data directly from your OpenClaw installation. If you installed OpenClaw with default settings, most paths are auto-detected under `~/.openclaw/` and you only need to configure your gateway auth token.
+
+### 1. Find your gateway auth token
+
+The chat feature connects to the OpenClaw gateway via WebSocket. To authenticate, you need the token from your OpenClaw config:
+
+```bash
+cat ~/.openclaw/openclaw.json | grep -A2 '"auth"'
+```
+
+Look for the `gateway.auth.token` value and set it in `.env.local`:
+
+```
+NEXT_PUBLIC_OPENCLAW_TOKEN=your-token-here
+OPENCLAW_AUTH_TOKEN=your-token-here
+```
+
+> Both variables use the same token. `NEXT_PUBLIC_` is for the browser-side WebSocket connection, `OPENCLAW_AUTH_TOKEN` is for server-side API calls.
+
+### 2. Verify your gateway is running
+
+The dashboard expects the OpenClaw gateway on port 18789:
+
+```bash
+curl -s http://127.0.0.1:18789/health
+```
+
+If this doesn't respond, make sure the gateway is running (`openclaw gateway start` or check your OpenClaw setup).
+
+### 3. Verify your database exists
+
+Usage analytics require a populated SQLite database:
+
+```bash
+ls -la ~/.openclaw/workspace/data/usage.db
+```
+
+If the file doesn't exist, the usage tracker hasn't recorded any data yet. The dashboard will still work — the usage page will just show empty charts.
+
+### 4. Check your paths
+
+If you used a non-default OpenClaw installation path, update these in `.env.local`:
+
+| Variable | What it points to | How to find it |
+|----------|-------------------|----------------|
+| `DATABASE_PATH` | Usage SQLite database | `find ~/.openclaw -name "usage.db"` |
+| `OPENCLAW_WORKSPACE` | Workspace directory (memory, docs, tasks) | `ls ~/.openclaw/workspace/` |
+| `OPENCLAW_SESSIONS` | Agent session JSONL logs | `ls ~/.openclaw/agents/main/sessions/` |
+
+If all your paths are under `~/.openclaw/` with the default layout, you don't need to set any of these — the dashboard auto-detects them.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` and configure:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_PATH` | Path to your OpenClaw `usage.db` file | `$HOME/.openclaw/workspace/data/usage.db` |
-| `OPENCLAW_WORKSPACE` | Path to your OpenClaw workspace directory | `$HOME/.openclaw/workspace` |
-| `OPENCLAW_SESSIONS` | Path to your agent's session JSONL files | `$HOME/.openclaw/agents/main/sessions` |
+| `DATABASE_PATH` | Path to your OpenClaw `usage.db` file | `~/.openclaw/workspace/data/usage.db` |
+| `OPENCLAW_WORKSPACE` | Path to your OpenClaw workspace directory | `~/.openclaw/workspace` |
+| `OPENCLAW_SESSIONS` | Path to your agent's session JSONL files | `~/.openclaw/agents/main/sessions` |
 | `NEXT_PUBLIC_GATEWAY_URL` | WebSocket URL for the OpenClaw gateway | `ws://127.0.0.1:18789` |
-| `NEXT_PUBLIC_OPENCLAW_TOKEN` | Gateway auth token (from `openclaw.json`) | — |
-| `OPENCLAW_AUTH_TOKEN` | Server-side gateway auth token | — |
+| `NEXT_PUBLIC_OPENCLAW_TOKEN` | Gateway auth token (see above) | — |
+| `OPENCLAW_AUTH_TOKEN` | Server-side gateway auth token (same token) | — |
 | `DASHBOARD_PIN` | PIN code for dashboard login | `0000` |
 | `NEXT_PUBLIC_TAILSCALE_GATEWAY` | (Optional) Tailscale WebSocket URL for remote access | — |
 
