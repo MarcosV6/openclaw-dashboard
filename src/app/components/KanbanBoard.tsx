@@ -253,14 +253,28 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
     const taskId = draggableId;
     const newStatus = destination.droppableId as Task['status'];
 
+    const task = tasks.find(t => t.id === taskId);
+
     setTasks(prev => {
-      const updated = prev.map(task =>
-        task.id === taskId ? { ...task, status: newStatus } : task
+      const updated = prev.map(t =>
+        t.id === taskId ? { ...t, status: newStatus } : t
       );
       const movedTask = updated.find(t => t.id === taskId);
       if (movedTask) syncTask(movedTask);
       return updated;
     });
+
+    // Optimistically add to completed log when moving to done
+    if (newStatus === 'done' && task && !completedLog.some(e => e.task_id === task.id)) {
+      setCompletedLog(prev => [{
+        id: Date.now(),
+        task_id: task.id,
+        title: task.title,
+        description: task.description || null,
+        priority: task.priority,
+        completed_at: new Date().toISOString(),
+      }, ...prev]);
+    }
 
     onTaskMove?.(taskId, newStatus);
   };

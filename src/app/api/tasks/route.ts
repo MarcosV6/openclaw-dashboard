@@ -48,12 +48,15 @@ export async function PUT(request: NextRequest) {
       [task.title, task.description || null, task.priority, task.status, task.id]
     );
 
-    // Log to completed history when task moves to done
+    // Log to completed history when task moves to done (skip if already logged)
     if (task.status === 'done') {
-      await db.run(
-        'INSERT INTO completed_log (task_id, title, description, priority) VALUES (?, ?, ?, ?)',
-        [task.id, task.title, task.description || null, task.priority || 'medium']
-      );
+      const existing = await db.get('SELECT id FROM completed_log WHERE task_id = ?', [task.id]);
+      if (!existing) {
+        await db.run(
+          'INSERT INTO completed_log (task_id, title, description, priority) VALUES (?, ?, ?, ?)',
+          [task.id, task.title, task.description || null, task.priority || 'medium']
+        );
+      }
     }
 
     await db.close();
