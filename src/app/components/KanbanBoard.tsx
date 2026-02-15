@@ -217,7 +217,11 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
     setLoaded(true);
   }, []);
 
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  useEffect(() => {
+    fetchTasks();
+    const interval = setInterval(fetchTasks, 5000);
+    return () => clearInterval(interval);
+  }, [fetchTasks]);
 
   const syncTask = async (task: Task, method: 'POST' | 'PUT' | 'DELETE' = 'PUT') => {
     setSyncing(true);
