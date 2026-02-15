@@ -24,6 +24,15 @@ interface DbTask {
   updated_at: string;
 }
 
+interface CompletedEntry {
+  id: number;
+  task_id: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  completed_at: string;
+}
+
 interface KanbanBoardProps {
   tasks?: Task[];
   onTaskMove?: (taskId: string, newStatus: string) => void;
@@ -186,13 +195,21 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const [showAllCompleted, setShowAllCompleted] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const [completedLog, setCompletedLog] = useState<CompletedEntry[]>([]);
 
   const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch('/api/tasks');
-      if (res.ok) {
-        const data: DbTask[] = await res.json();
+      const [tasksRes, completedRes] = await Promise.all([
+        fetch('/api/tasks'),
+        fetch('/api/tasks?completed=true'),
+      ]);
+      if (tasksRes.ok) {
+        const data: DbTask[] = await tasksRes.json();
         setTasks(data.map(dbToTask));
+      }
+      if (completedRes.ok) {
+        const data: CompletedEntry[] = await completedRes.json();
+        setCompletedLog(data);
       }
     } catch (err) {
       console.error('Failed to fetch tasks:', err);
@@ -277,13 +294,7 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const getTasksByStatus = (status: Task['status']) =>
     tasks.filter(task => task.status === status);
 
-  const completedTasks = getTasksByStatus('done').sort((a, b) => {
-    const dateA = a.updatedAt || a.createdAt;
-    const dateB = b.updatedAt || b.createdAt;
-    return new Date(dateB).getTime() - new Date(dateA).getTime();
-  });
-
-  const visibleCompleted = showAllCompleted ? completedTasks : completedTasks.slice(0, 5);
+  const visibleCompleted = showAllCompleted ? completedLog : completedLog.slice(0, 5);
 
   if (!loaded) {
     return (
@@ -322,53 +333,42 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
         </div>
       </DragDropContext>
 
-      {/* Completed Section */}
-      {completedTasks.length > 0 && (
+      {/* Completed History */}
+      {completedLog.length > 0 && (
         <div className="mt-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Completed</h2>
             <span className="bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-white/60 text-sm px-2 py-1 rounded-full">
-              {completedTasks.length}
+              {completedLog.length}
             </span>
           </div>
           <div className="space-y-2">
-            {visibleCompleted.map(task => (
-              <div key={task.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] group">
+            {visibleCompleted.map(entry => (
+              <div key={entry.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)]">
                 <div className="flex items-center gap-3 min-w-0">
                   <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   <div className="min-w-0">
-                    <span className="text-gray-700 dark:text-white/70 truncate block">{task.title}</span>
-                    {task.description && (
-                      <span className="text-gray-400 dark:text-white/30 text-xs truncate block">{task.description}</span>
+                    <span className="text-gray-700 dark:text-white/70 truncate block">{entry.title}</span>
+                    {entry.description && (
+                      <span className="text-gray-400 dark:text-white/30 text-xs truncate block">{entry.description}</span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-gray-400 dark:text-white/30 text-xs">
-                    {new Date(task.updatedAt || task.createdAt).toLocaleDateString()}
-                  </span>
-                  <button
-                    onClick={() => requestDelete(task.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-400 dark:text-white/30 hover:text-red-400 transition-all"
-                    title="Delete task"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
+                <span className="text-gray-400 dark:text-white/30 text-xs flex-shrink-0 ml-3">
+                  {new Date(entry.completed_at).toLocaleDateString()}
+                </span>
               </div>
             ))}
           </div>
-          {completedTasks.length > 5 && (
+          {completedLog.length > 5 && (
             <button
               onClick={() => setShowAllCompleted(!showAllCompleted)}
               className="mt-3 text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/60 text-sm transition-colors"
             >
-              {showAllCompleted ? 'Show less' : `Show all ${completedTasks.length} completed tasks`}
+              {showAllCompleted ? 'Show less' : `Show all ${completedLog.length} completed tasks`}
             </button>
           )}
         </div>
