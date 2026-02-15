@@ -24,6 +24,14 @@ A self-hosted web dashboard for [OpenClaw](https://github.com/openclaw) — moni
 
 ## Quick Start
 
+### Option A: Let your OpenClaw agent set it up
+
+Paste this prompt into your OpenClaw agent and it will do everything for you:
+
+> Install the OpenClaw Dashboard. Clone https://github.com/MarcosV6/openclaw-dashboard.git into ~/.openclaw/workspace/dashboard. Create the usage.db database at ~/.openclaw/workspace/data/usage.db with the schema from the README if it doesn't already exist. Create .env.local from .env.example — find my gateway auth token from ~/.openclaw/openclaw.json (under gateway.auth.token) and fill it in for both NEXT_PUBLIC_OPENCLAW_TOKEN and OPENCLAW_AUTH_TOKEN. Set DASHBOARD_PIN to a random 4-digit number and tell me what it is. Leave all paths as defaults. Then run npm install, npm run build, and npm start. Tell me the URL when it's running.
+
+### Option B: Manual setup
+
 ```bash
 git clone https://github.com/MarcosV6/openclaw-dashboard.git
 cd openclaw-dashboard
