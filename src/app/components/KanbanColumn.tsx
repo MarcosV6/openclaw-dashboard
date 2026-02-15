@@ -17,6 +17,7 @@ interface KanbanColumnProps {
   title: string;
   tasks: Task[];
   color: string;
+  isDragging?: boolean;
 }
 
 const columnColors = {
@@ -31,9 +32,12 @@ const headerColors = {
   done: 'text-green-400',
 };
 
-export default function KanbanColumn({ id, title, tasks, color }: KanbanColumnProps) {
+export default function KanbanColumn({ id, title, tasks, color, isDragging }: KanbanColumnProps) {
   return (
-    <div className={`glass-card p-4 flex-1 lg:min-w-0 border-t-2 ${columnColors[id as keyof typeof columnColors] || 'border-t-gray-500'}`}>
+    <div
+      className={`p-4 flex-1 lg:min-w-0 border-t-2 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] ${columnColors[id as keyof typeof columnColors] || 'border-t-gray-500'}`}
+      style={isDragging ? { backdropFilter: 'none', WebkitBackdropFilter: 'none' } : { backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+    >
       <div className="flex items-center gap-2 mb-4">
         <div className={`w-3 h-3 rounded-full ${
           id === 'todo' ? 'bg-purple-500' : 

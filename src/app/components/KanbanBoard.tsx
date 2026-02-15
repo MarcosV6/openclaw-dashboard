@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, DropResult, DragStart } from '@hello-pangea/dnd';
 import KanbanColumn from './KanbanColumn';
 
 interface Task {
@@ -43,6 +43,7 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -79,7 +80,12 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
     setSyncing(false);
   };
 
+  const handleDragStart = (_start: DragStart) => {
+    setIsDragging(true);
+  };
+
   const handleDragEnd = (result: DropResult) => {
+    setIsDragging(false);
     const { destination, source, draggableId } = result;
     if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
       return;
@@ -156,11 +162,11 @@ export default function KanbanBoard({ onTaskMove }: KanbanBoardProps) {
         </button>
       </div>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col lg:flex-row gap-4 pb-4">
-          <KanbanColumn id="todo" title="To Do" tasks={getTasksByStatus('todo')} color="purple" />
-          <KanbanColumn id="inProgress" title="In Progress" tasks={getTasksByStatus('inProgress')} color="amber" />
-          <KanbanColumn id="done" title="Done" tasks={getTasksByStatus('done')} color="green" />
+          <KanbanColumn id="todo" title="To Do" tasks={getTasksByStatus('todo')} color="purple" isDragging={isDragging} />
+          <KanbanColumn id="inProgress" title="In Progress" tasks={getTasksByStatus('inProgress')} color="amber" isDragging={isDragging} />
+          <KanbanColumn id="done" title="Done" tasks={getTasksByStatus('done')} color="green" isDragging={isDragging} />
         </div>
       </DragDropContext>
 
